@@ -8,9 +8,8 @@ import concurrent.futures
 client = MongoClient('mongodb+srv://alamin:1zqbsg2vBlyY1bce@cluster0.sngd13i.mongodb.net/mvp2?retryWrites=true&w=majority')
 db = client['mvp2']
 collection = db['UK_Daily_Data']
-sp_gsl_lookup2 = db['sp_gsl_lookup2'] 
+sp_upc_lookup = db['sp_upc_lookup'] 
 
-scedule_time="04:00"
 
 
 # Create index on ASIN field for faster querying
@@ -51,7 +50,7 @@ def update_document(item):
         "UK_Referral_Fee_£": item.get('UK_Referral_Fee'),
         "time_date_stamp": datetime.now()
     }
-    result = sp_gsl_lookup2.update_many(
+    result = sp_upc_lookup.update_many(
         {"asin": asin, "to_be_removed": {"$ne": "Y"}, "gsl_code": "A"},
         {"$set": update_data}
     )
@@ -62,7 +61,7 @@ def update_document(item):
 
 
 def collect_Data_to_Sp_Gsl_lookup2():
-  print("colecting")
+  print("Collecting Data...")
   try:
       # Perform the aggregation
       result = list(collection.aggregate(pipeline1))
@@ -116,27 +115,37 @@ pipeline2 = [
         }
     },
     {
-        '$out': 'sp_gsl_lookup2'  # Output the results back to the same collection
+        '$out': 'sp_upc_lookup'  # Output the results back to the same collection
     }
 ]
 
 
 def calculate_Sp_gsl_Lookup2_UK_Profit():
-  print("calculating")
+  print("Calculating UK Profit ...")
   try:
       # Perform the aggregation and update
-      result = sp_gsl_lookup2.aggregate(pipeline2)
+      result = sp_upc_lookup.aggregate(pipeline2)
       
       print("UK Profit calculation and update completed.")
       
   except Exception as e:
       print(f"An error occurred during aggregation or update: {e}")
 
-collect_Data_to_Sp_Gsl_lookup2()
-# Schedule jobs
-schedule.every().day.at(scedule_time).do(collect_Data_to_Sp_Gsl_lookup2) 
-schedule.every().day.at(scedule_time).do(collect_Data_to_Sp_Gsl_lookup2)  
-# Run the scheduler
+
+
+
+print("WIll run at Scedule")
+
+def job():
+    print("Running scheduled tasks...")
+    collect_Data_to_Sp_Gsl_lookup2()
+    calculate_Sp_gsl_Lookup2_UK_Profit()
+
+# Schedule the job to run every day at 14:00
+schedule.every().day.at("04:10").do(job)
+
+# Run the scheduler indefinitely
 while True:
     schedule.run_pending()
     time.sleep(60)  # Check every minute
+
